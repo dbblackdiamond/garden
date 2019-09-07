@@ -5,14 +5,16 @@ package main
 */
 
 type PowerMsg struct {
-  Timestamp int64  `json:"timestamp"`
   Box int           `json:"box"`
+  Capacity int  `json:"capacity"`
+  Charge int    `json:"charge"`
+  Current int   `json:"current"`
+  Health int    `json:"health"`
   Voltage float64   `json:"voltage"`
-  Percent float64  `json:"percent"`
+  Signal int       `json:"signal"`
 }
 
 type Record struct {
-  Timestamp int64 `json:"timestamp"`
   Box int         `json:"box"`
   Sensor int      `json:"sensor"`
   Value float64   `json:"value"`
@@ -21,34 +23,30 @@ type Record struct {
 
 type Records []Record
 
+type Sample struct {
+  Timestamp int64 `json:"t"`
+  Value float64 `json:"v"`
+}
+
+type Samples []Sample
+
 type Sensor struct {
   Number int `json:"slot"`
-  Dots []Dot `json:"dots"`
+  Samples []Sample `json:"samples"`
   Water int `json:"water"`
 }
 
 type Sensors []Sensor
-
-type Dot struct {
-  Timestamp int64 `json:"timestamp"`
-  Value float64   `json:"value"`
-}
-
-type UbidotsAPI struct {
-  Count bool  `json:"count"`
-  Next string `json:"next"`
-  Previous string `json:"previous"`
-  Results []Dot `json:"results"`
-}
 
 type Device struct {
   Key string
   Id string       `json:"device" redis:"id"`
   NumSensors int  `json:"sensors" redis:"sensors"`
   Box int         `json:"box" redis:"box"`
-  Watering int    `json:"watering" redis:"watering"`
   Valve int       `json:"valve" redis:"valve"`
   Sleep int       `json:"sleep" redis:"sleep"`
+  Start int       `json:"start" redis:"start"`
+  End into        `json:"end" redis:"end"`
 }
 
 type Garden struct {

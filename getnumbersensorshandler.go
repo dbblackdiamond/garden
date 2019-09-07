@@ -9,7 +9,7 @@ import (
 )
 
 //Improvement to do: make it persistent with either influxdb or redis!!!!!
-func getBoxNumberHandler(w http.ResponseWriter, r *http.Request) {
+func getNumberSensorsHandler(w http.ResponseWriter, r *http.Request) {
   vars := mux.Vars(r)
   key := ""
   for i := 0; i < garden.NumDevices; i++ {
@@ -24,10 +24,10 @@ func getBoxNumberHandler(w http.ResponseWriter, r *http.Request) {
   c := Pool.Get()
   defer c.Close()
 
-  box, err := redis.Strings(c.Do("HMGET", key, "box"))
+  sensors, err := redis.Strings(c.Do("HMGET", key, "sensors"))
   check("Hmget", err)
   w.Header().Set("Content-Type", "application/json")
   w.WriteHeader(http.StatusOK)
-  jsonStr := `{"box":` + box[0] + `}`
+  jsonStr := `{"sensors":` + sensors[0] + `}`
   io.WriteString(w, jsonStr)
 }

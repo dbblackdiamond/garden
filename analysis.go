@@ -7,36 +7,25 @@ import (
   "github.com/influxdata/influxdb1-client/v2"
 )
 
-type Sample struct {
-  Timestamp int64 `json:"t"`
-  Value float64 `json:"v"`
-}
-
-type Samples []Sample
-
-type Sensor struct {
-  Number int `json:"slot"`
-  Samples []Sample `json:"samples"`
-  Water int `json:"water"`
-}
-
-type Sensors []Sensor
-
-func getNumberOfBoxes(conn client.Client) []int {
-  results, err := getListOfBoxes(conn)
-  if err != nil {
-    log.Fatalln("Error: ", err)
+func findDeviceid(box int) (string, int) {
+  for i := 0; i < garden.NumDevices; i++ {
+    if garden.Devices[i].Box == box {
+      //fmt.Println("main: device id = ", garden.Devices[i].Id, " for box ", box)
+      return garden.Devices[i].Id, i
+    }
   }
-  boxes := make([]int, len(results[0].Series[0].Values))
-  for i, value := range results[0].Series[0].Values {
-    //fmt.Println("getNUmberOfBoxes: Record #",i ,":\tBox = ", value[1])
-    val, _ := value[1].(string)
-    boxes[i], _ = strconv.Atoi(val)
-  }
-  //fmt.Println("getNUmberOfBoxes: Found ", len(boxes), " boxes to analyze")
-  return boxes
+  return "", 0
 }
 
+func getKey(deviceid string) string {
+  for i := 0; i < garden.NumDevices; i++ {
+    if garden.Devices[i].Id == deviceid {
+      //fmt.Println("main: key = ", garden.Devices[i].Key, " for device id ", deviceid)
+      return garden.Devices[i].Key
+    }
+  }
+  return ""
+}
 
 func convertVoltageToVWC(samples Samples) []float64 {
   vwc := make([]float64, len(samples))
@@ -103,52 +92,31 @@ func analyzeSensorData(sensor Sensor) int {
   return 0
 }
 
-func getNumberOfSensors(records Records) int {
-  counter := make(map[int]int)
-  for _, row := range records {
-      counter[row.Sensor]++
-    }
-    //fmt.Println("getNumberOfSensors: Found ", len(counter), " sensors in the records")
-    return len(counter)
-}
-
-func convertRecordIntoSensorData(records Records) Sensors {
-  //numberSensors := getNumberOfSensors(records)
-  sensors := make(Sensors, 1)
-  var sample Sample
-  for i := 0; i < len(records); i++ {
-    //fmt.Println("convertRecordIntoSensorData: Converting record #", i, " out of ", len(records), " records")
-    //fmt.Println("convertRecordIntoSensorData: len(sensor) = ", len(sensors), " and records[i].Sensor = ", records[i].Sensor)
-    if len(sensors) > records[i].Sensor {
-      //fmt.Println("convertRecordIntoSensorData: appending to existing sensor data")
-      sample.Value = records[i].Value
-      sample.Timestamp = records[i].Timestamp
-      sensors[records[i].Sensor].Samples = append(sensors[records[i].Sensor].Samples, sample)
-    } else {
-      var sensor Sensor
-      //fmt.Println("convertRecordIntoSensorData: creating new sensor")
-      sensor.Number = records[i].Sensor
-      sensor.Samples = make(Samples, 1)
-      sensor.Samples[0].Value = records[i].Value
-      sensor.Samples[0].Timestamp = records[i].Timestamp
-      sensors = append(sensors, sensor)
-    }
+func getSensorData(deviceid string, box int) Sensors {
+  var sensors Sensors
+  for i := 0; i < garden.Devices[devicepos].NumSensors; i++ {
+    var sensor Sensor
+    results := getSensorRecord(deviceid, i)
+    sensor.Number = i
+    sensor.Dots = results
+    sensors = append(sensors, sensor)
   }
-  //fmt.Println("ConvertRecordIntoSensorData: Converted records ", records, " into sensors ", sensors)
-  return sensors
-}
-
-func getSensorData(conn client.Client, box int) Sensors {
-  res, err := getBoxRecords(conn, box)
-  if err != nil {
-    log.Fatalln("Error: ", err)
-  }
-  //fmt.Println("getSensorData: Analyzing records")
-  records := analyzeRecords(conn, res)
-  //fmt.Println("getSensorData: Converting records into sensor data")
-  sensors := convertRecordIntoSensorData(records)
-  for i := 0; i < len(sensors); i++ {
-    sensors[i].Water = analyzeSensorData(sensors[i])
+  for i := 0; i < garden.Devices[devicepos].NumSensors; i++ {
+    res := analyzeSensorData(sensors[i])
+    //fmt.Println("getSensorData: pre-switch sensor.Water = ", sensors[i].Water)
+    switch res {
+    case 0:
+      sensors[i].Water = 0
+    case 1:
+      sensors[i].Water = 1
+    case 2:
+      sensors[i].Water = 2
+    case 3:
+      sensors[i].Water = 3
+    case 4:
+      sensors[i].Water = 4
+    }
+    //fmt.Println("getSensorData: pre-switch sensor.Water = ", sensors[i].Water)
   }
   //fmt.Printf("getSensorData: sensors = %+v\n", sensors)
   return sensors
